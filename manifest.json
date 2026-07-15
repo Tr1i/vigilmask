@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "VigilMask",
+  "version": "0.1.0",
+  "description": "Local-first privacy shield for AI chat — redacts sensitive data before it leaves your browser.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["https://chat.openai.com/*", "https://claude.ai/*", "https://gemini.google.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chat.openai.com/*", "https://claude.ai/*", "https://gemini.google.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "VigilMask — click to toggle protection"
+  }
+}
