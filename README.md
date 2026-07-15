@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/30054124/README.md)
 # VigilMask — Starter Kit & Roadmap
 
 A local-first privacy shield for AI chat. This kit contains a working
