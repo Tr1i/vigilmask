@@ -21,10 +21,40 @@ extension/
                           credit card, API keys, IBAN)
 
 desktop/
-  server.py               Localhost daemon using Presidio (spaCy NER +
-                          regex + confidence scoring) for stronger
-                          detection than pure in-browser tools can do
+  server.py               Localhost daemon running the two-pass hybrid
+                          detection pipeline (see below)
+  eu_patterns.py           Pass 1: deterministic EU regex + checksum layer
+                          (IBAN, PESEL, Steuer-ID, DNI/NIE, Codice
+                          Fiscale, INSEE, Belgian BNN, cards, phones...)
+  ml_engine.py             Pass 2: multilingual NER via
+                          bardsai/eu-pii-anonimization-multilang (ONNX,
+                          24 EU languages, 36 entity classes incl. GDPR
+                          Article 9 special categories)
+  requirements.txt         pip install -r requirements.txt
+  test_engine.py           Smoke tests for the detection layers
 ```
+
+### Desktop engine design notes (July 2026 rework)
+
+The daemon originally used Presidio + spaCy `en_core_web_sm`, which was
+English-only. It now runs a two-pass hybrid pipeline:
+
+1. **Deterministic pass** — localized regex + checksum validation for
+   structured EU identifiers. Checksums (mod-97, Luhn, PESEL mod-10,
+   ISO 7064) mean these detections have effectively zero false positives
+   and cost microseconds.
+2. **Semantic pass** — an XLM-RoBERTa token classifier trained natively
+   on 24 official EU languages. No `language=` parameter exists anywhere:
+   the same forward pass handles Polish declensions, German compounds,
+   and French context. It also covers GDPR Article 9 special categories
+   (health, biometric, political opinion, union membership) that generic
+   NER models miss.
+
+Privacy posture: token↔value mappings are **session-only** (process RAM,
+per session id, gone on exit or `/clear_session`); **zero telemetry**
+(the only outbound request the daemon can ever make is the one-time
+model download from the Hugging Face CDN, after which it runs fully
+offline).
 
 ## Development Roadmap
 
@@ -47,8 +77,10 @@ you) to label spans of text as PERSON, ORG, GPE (place), etc.
 
 - For the browser: **wink-nlp** or **compromise.js** (pure JavaScript,
   runs in a Web Worker, no Python needed).
-- For the desktop daemon: **spaCy's `en_core_web_sm`**, wrapped by
-  **Presidio** (see `server.py`).
+- For the desktop daemon: **bardsai/eu-pii-anonimization-multilang**, a
+  multilingual XLM-RoBERTa token classifier run via ONNX Runtime
+  (see `ml_engine.py`). Done — this replaced the original
+  Presidio/spaCy English-only setup.
 
 **What you're learning:** the difference between rule-based detection
 (regex) and statistical detection (NER), and why you need both — regex
@@ -103,9 +135,13 @@ not something you can fully solve on paper.
 - **Confidence threshold:** NER models output a probability, not a
   certainty. Filtering out low-confidence guesses (e.g. below 0.5)
   trades some missed detections for fewer false alarms.
-- **Presidio:** Microsoft's open-source toolkit that bundles regex
-  recognizers + spaCy NER + anonymization into one framework, so you
-  don't have to glue those pieces together yourself.
+- **Token classification:** the NER architecture used by the desktop
+  engine — every token in the input gets a label (B-PERSON_NAME,
+  I-HEALTH_DATA, O...), and contiguous labelled tokens merge into one
+  maskable span. Cheaper and hallucination-free compared to asking a
+  generative model to "find the PII".
+- **ONNX Runtime:** a lean inference engine that runs the quantized
+  model on CPU without needing PyTorch or the full transformers stack.
 - **Manifest V3:** the current Chrome extension architecture. Content
   scripts see the page; background service workers hold logic but can
   be shut down when idle by the browser.

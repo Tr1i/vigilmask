@@ -1,0 +1,7 @@
+# VigilMask desktop daemon — hybrid detection engine
+flask
+phonenumbers
+numpy
+onnxruntime
+tokenizers
+huggingface_hub

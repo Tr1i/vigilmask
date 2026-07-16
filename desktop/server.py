@@ -1,126 +1,210 @@
 """
 VigilMask — Desktop Daemon
 ============================
-This is the "power mode" backend. It runs as a small localhost server
-that the browser extension can call when it wants stronger detection
-than pure in-browser regex/wink-nlp can offer.
+Localhost redaction server the browser extension (or any local client)
+calls for stronger detection than in-browser regex can offer. Listens on
+127.0.0.1 only — nothing ever leaves the device.
 
-WHY A SEPARATE DESKTOP APP:
-spaCy (and Presidio, which wraps it) is Python — it can't run inside a
-browser extension directly. So this process runs independently on the
-user's machine and listens on localhost only (127.0.0.1), meaning
-nothing ever leaves the device. The extension talks to it over a local
-HTTP call, functioning like calling a library, except the "library" is
-a background process instead of an in-page import.
+DETECTION: two-pass hybrid pipeline (see eu_patterns.py / ml_engine.py)
+  Pass 1  Deterministic — EU-focused regex + checksum validators for
+          structured data (IBAN, PESEL, Steuer-ID, DNI/NIE, Codice
+          Fiscale, INSEE/NIR, Belgian BNN, cards, emails, phones, keys).
+          Runs in microseconds, zero false positives on checksummed types.
+  Pass 2  Semantic — bardsai/eu-pii-anonimization-multilang, an
+          XLM-RoBERTa token classifier covering 24 EU languages and 36
+          entity classes including GDPR Article 9 special categories
+          (health, biometric, political opinion, ...). Runs on ONNX
+          Runtime CPU with INT8 weights; no language parameter needed.
+          If the model isn't available the server degrades to Pass 1
+          only and says so in /status.
 
-WHAT IS PRESIDIO:
-Microsoft Presidio is an open-source PII detection + anonymization
-toolkit. It's not a single model — it's a framework that combines:
-  - Its own regex-based recognizers (similar to our regex-patterns.js,
-    but more mature/battle-tested)
-  - spaCy's NER model for names, orgs, locations
-  - A confidence-scoring system so you can tune sensitivity
-  - "Anonymizer" operators that handle the replace/redact step, and an
-    "Deanonymizer" step for reversing it — which maps almost exactly to
-    our redact()/rehydrate() design in the extension.
-We're using it here instead of hand-rolling spaCy integration ourselves,
-because it already solved a lot of the edge cases (overlapping entities,
-context-aware confidence, etc.).
+PRIVACY GUARANTEES:
+  - Session-only storage: token→value mappings live in process memory,
+    keyed per session id. They are never written to disk and vanish when
+    the daemon stops or /clear_session is called.
+  - Zero telemetry: no analytics, no crash reporting, no logging of
+    prompt text. The single outbound request this app can make is the
+    first-run model download from the Hugging Face CDN; after that it
+    is fully offline.
 
 INSTALL (run once):
-    pip install presidio-analyzer presidio-anonymizer flask
-    python -m spacy download en_core_web_sm
+    pip install -r requirements.txt
 
 RUN:
     python server.py
     # Server listens on http://127.0.0.1:8787
 """
 
-from flask import Flask, request, jsonify
-from presidio_analyzer import AnalyzerEngine
-from presidio_anonymizer import AnonymizerEngine
-from presidio_anonymizer.entities import OperatorConfig
+import logging
+import threading
+
+from flask import Flask, jsonify, request
+
+from eu_patterns import find_structured_spans
+from ml_engine import MODEL_ID, SemanticDetector
 
 app = Flask(__name__)
 
-# AnalyzerEngine loads spaCy's en_core_web_sm under the hood plus
-# Presidio's built-in regex recognizers (email, credit card, IP, etc.)
-# This happens once at startup, not per-request, so subsequent calls
-# are fast (typically tens of milliseconds for short text).
-analyzer = AnalyzerEngine()
-anonymizer = AnonymizerEngine()
+# Werkzeug's default access log prints request lines only (no bodies),
+# but we silence it anyway: a redaction tool should not journal traffic.
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
-# In-memory session map: token -> real value, mirroring the same
-# design as RedactionEngine in the extension. In a real build you'd
-# key this per conversation-id sent from the extension, and persist it
-# to an encrypted local SQLite file so it survives the daemon restarting
-# mid-conversation.
-session_map = {}
-counters = {}
+detector = SemanticDetector()
+
+DEFAULT_THRESHOLD = 0.5
+
+# ---------------------------------------------------------------------------
+# Session store — RAM only, by design. No SQLite, no files, no persistence.
+# A mapping that never touches disk cannot be recovered forensically after
+# the process exits, which is the whole point of pseudonymization done
+# client-side (GDPR Recital 26 / Article 32 posture).
+# ---------------------------------------------------------------------------
 
 
-def make_token(entity_type: str, value: str) -> str:
-    key = f"{entity_type}:{value.strip().lower()}"
-    for token, original in session_map.items():
-        if original == value:
-            return token
-    counters[entity_type] = counters.get(entity_type, 0) + 1
-    token = f"\u27e6{entity_type}_{counters[entity_type]}\u27e7"
-    session_map[token] = value
-    return token
+class Session:
+    def __init__(self):
+        self.token_to_value = {}
+        self.value_to_token = {}
+        self.counters = {}
+        self.ledger = []  # audit trail for the UI: what was masked, as what
+
+    def make_token(self, entity_type: str, value: str) -> str:
+        key = (entity_type, value.strip())
+        if key in self.value_to_token:
+            return self.value_to_token[key]
+        self.counters[entity_type] = self.counters.get(entity_type, 0) + 1
+        token = f"⟦{entity_type}_{self.counters[entity_type]}⟧"
+        self.token_to_value[token] = value
+        self.value_to_token[key] = token
+        self.ledger.append({"placeholder": token, "category": entity_type,
+                            "original": value})
+        return token
+
+
+_sessions = {}
+_sessions_lock = threading.Lock()
+
+
+def get_session(session_id: str) -> Session:
+    with _sessions_lock:
+        if session_id not in _sessions:
+            _sessions[session_id] = Session()
+        return _sessions[session_id]
+
+
+# ---------------------------------------------------------------------------
+# Pipeline
+# ---------------------------------------------------------------------------
+
+
+def run_pipeline(text: str, session: Session, threshold: float):
+    """Two-pass redaction. Returns (redacted_text, entities_found)."""
+    found = []
+
+    # Pass 1 — deterministic. Mask structured data first so the ML pass
+    # never even sees it (and can't mis-classify it).
+    spans = find_structured_spans(text)
+    for start, end, entity_type in reversed(spans):  # right-to-left keeps indices stable
+        value = text[start:end]
+        token = session.make_token(entity_type, value)
+        text = text[:start] + token + text[end:]
+        found.append({"category": entity_type, "pass": "deterministic"})
+
+    # Pass 2 — semantic, multilingual. No language parameter: XLM-R
+    # handles all 24 EU languages in the same forward pass.
+    if detector.ready:
+        ml_spans = detector.detect(text, threshold=threshold)
+        for start, end, entity_type, score in sorted(ml_spans, reverse=True):
+            value = text[start:end]
+            if "⟦" in value or "⟧" in value:
+                continue  # never re-mask a placeholder from pass 1
+            token = session.make_token(entity_type, value)
+            text = text[:start] + token + text[end:]
+            found.append({"category": entity_type, "pass": "semantic",
+                          "score": round(score, 3)})
+
+    return text, found
+
+
+# ---------------------------------------------------------------------------
+# API — same contract the extension already speaks, plus /status.
+# ---------------------------------------------------------------------------
 
 
 @app.route("/redact", methods=["POST"])
 def redact():
     """
-    Expects: { "text": "..." }
-    Returns: { "redacted": "..." }
-
-    Pipeline:
-      1. analyzer.analyze() finds PII spans with entity type + confidence
-      2. We filter by a confidence threshold to reduce false positives
-      3. We replace each span with a reversible token (not Presidio's
-         built-in anonymizer output, so we can guarantee exact-match
-         rehydration later)
+    Expects: { "text": "...", "session_id"?: "...", "threshold"?: 0.5 }
+    Returns: { "redacted": "...", "entities": [...], "engine": "hybrid"|"deterministic-only" }
     """
-    text = request.json.get("text", "")
-    results = analyzer.analyze(text=text, language="en")
+    body = request.json or {}
+    text = body.get("text", "")
+    session = get_session(body.get("session_id", "default"))
+    threshold = float(body.get("threshold", DEFAULT_THRESHOLD))
 
-    # Sort by start position descending so we can replace in-place
-    # without shifting the indices of spans we haven't processed yet.
-    results = sorted(results, key=lambda r: r.start, reverse=True)
-
-    redacted = text
-    for r in results:
-        if r.score < 0.5:  # confidence threshold — tune this per your false-positive tolerance
-            continue
-        original_value = text[r.start:r.end]
-        token = make_token(r.entity_type, original_value)
-        redacted = redacted[:r.start] + token + redacted[r.end:]
-
-    return jsonify({"redacted": redacted})
+    redacted, entities = run_pipeline(text, session, threshold)
+    return jsonify({
+        "redacted": redacted,
+        "entities": entities,
+        "engine": "hybrid" if detector.ready else "deterministic-only",
+    })
 
 
 @app.route("/rehydrate", methods=["POST"])
 def rehydrate():
     """
-    Expects: { "text": "..." } (the LLM's response, possibly containing tokens)
+    Expects: { "text": "...", "session_id"?: "..." }  (the LLM's response)
     Returns: { "rehydrated": "..." }
+
+    Tolerant matching: LLMs sometimes rewrite ⟦PERSON_1⟧ as [PERSON_1],
+    so both bracket styles are restored.
     """
-    text = request.json.get("text", "")
-    for token, original in session_map.items():
+    body = request.json or {}
+    text = body.get("text", "")
+    session = get_session(body.get("session_id", "default"))
+    for token, original in session.token_to_value.items():
         text = text.replace(token, original)
+        text = text.replace(f"[{token[1:-1]}]", original)
     return jsonify({"rehydrated": text})
+
+
+@app.route("/ledger", methods=["GET"])
+def ledger():
+    """Audit ledger for the UI: every mapping made this session."""
+    session = get_session(request.args.get("session_id", "default"))
+    return jsonify({"ledger": session.ledger})
 
 
 @app.route("/clear_session", methods=["POST"])
 def clear_session():
-    session_map.clear()
-    counters.clear()
+    body = request.json or {}
+    session_id = body.get("session_id")
+    with _sessions_lock:
+        if session_id:
+            _sessions.pop(session_id, None)
+        else:
+            _sessions.clear()
     return jsonify({"cleared": True})
 
 
+@app.route("/status", methods=["GET"])
+def status():
+    return jsonify({
+        "engine": "hybrid" if detector.ready else "deterministic-only",
+        "model": MODEL_ID,
+        "model_loaded": detector.ready,
+        "model_error": detector.load_error,
+        "network": "127.0.0.1 only — no telemetry, no external calls after model download",
+        "storage": "session-only (RAM); nothing persisted to disk",
+        "active_sessions": len(_sessions),
+    })
+
+
 if __name__ == "__main__":
+    # Load the model in the background so /redact works (regex-only)
+    # immediately while the ~300 MB first-run download proceeds.
+    threading.Thread(target=detector.load, daemon=True).start()
+
     # 127.0.0.1 only — never 0.0.0.0 — so this is unreachable from
     # outside the machine. This is the core privacy guarantee of the
     # whole desktop-app half of the product.
