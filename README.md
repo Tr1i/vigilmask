@@ -32,7 +32,43 @@ desktop/
                           Article 9 special categories)
   requirements.txt         pip install -r requirements.txt
   test_engine.py           Smoke tests for the detection layers
+
+app/
+  main.js                 Electron main process: spawns/attaches to the
+                          Python daemon, proxies all daemon HTTP through
+                          a path-whitelisted IPC bridge
+  preload.js               The four calls the UI is allowed to make
+                          (status, ledger, control, clear_session)
+  renderer/                The app UI: live brain visualization, session
+                          ledger drawer, pause + engine-switch controls
 ```
+
+## Running the desktop app
+
+```
+cd app
+npm install
+npm start
+```
+
+The Electron shell looks for a daemon on `127.0.0.1:8787`; if none is
+running it starts `desktop/server.py` itself (using `desktop/venv` when
+present) and shuts it down on quit. If you started the daemon by hand,
+the app attaches to it and leaves it running on exit.
+
+What's live in the UI:
+
+- **Status + engine meta** — polls `/status`; shows hybrid vs
+  regex-only, model-loading progress, and pause state.
+- **Brain nodes** — one bright node per masked entity this session
+  (capped at 40 visually; the stat shows the true count).
+- **Ledger drawer** — click the status row to expand the session audit
+  log (`/ledger`). Original values are hidden until clicked, and can be
+  wiped via "wipe session mappings" (`/clear_session`).
+- **Switch engine** — toggles the semantic NER pass on/off
+  (`/control {semantic_enabled}`), for regex-only operation.
+- **Pause protection** — `/control {paused}`; while paused, `/redact`
+  passes text through untouched and the "sent raw" counter increments.
 
 ### Desktop engine design notes (July 2026 rework)
 

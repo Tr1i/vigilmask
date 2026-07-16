@@ -53,6 +53,20 @@ detector = SemanticDetector()
 
 DEFAULT_THRESHOLD = 0.5
 
+# Runtime controls, flipped by the desktop app UI via /control.
+#   paused            /redact passes text through untouched (and counts it)
+#   semantic_enabled  toggles Pass 2 so users can run deterministic-only
+_control = {"paused": False, "semantic_enabled": True}
+_control_lock = threading.Lock()
+
+
+def engine_name() -> str:
+    if _control["paused"]:
+        return "paused"
+    if detector.ready and _control["semantic_enabled"]:
+        return "hybrid"
+    return "deterministic-only"
+
 # ---------------------------------------------------------------------------
 # Session store — RAM only, by design. No SQLite, no files, no persistence.
 # A mapping that never touches disk cannot be recovered forensically after
@@ -67,6 +81,8 @@ class Session:
         self.value_to_token = {}
         self.counters = {}
         self.ledger = []  # audit trail for the UI: what was masked, as what
+        self.turns = 0      # /redact calls this session
+        self.sent_raw = 0   # /redact calls that passed through while paused
 
     def make_token(self, entity_type: str, value: str) -> str:
         key = (entity_type, value.strip())
@@ -112,7 +128,7 @@ def run_pipeline(text: str, session: Session, threshold: float):
 
     # Pass 2 — semantic, multilingual. No language parameter: XLM-R
     # handles all 24 EU languages in the same forward pass.
-    if detector.ready:
+    if detector.ready and _control["semantic_enabled"]:
         ml_spans = detector.detect(text, threshold=threshold)
         for start, end, entity_type, score in sorted(ml_spans, reverse=True):
             value = text[start:end]
@@ -142,11 +158,16 @@ def redact():
     session = get_session(body.get("session_id", "default"))
     threshold = float(body.get("threshold", DEFAULT_THRESHOLD))
 
+    session.turns += 1
+    if _control["paused"]:
+        session.sent_raw += 1
+        return jsonify({"redacted": text, "entities": [], "engine": "paused"})
+
     redacted, entities = run_pipeline(text, session, threshold)
     return jsonify({
         "redacted": redacted,
         "entities": entities,
-        "engine": "hybrid" if detector.ready else "deterministic-only",
+        "engine": engine_name(),
     })
 
 
@@ -170,9 +191,36 @@ def rehydrate():
 
 @app.route("/ledger", methods=["GET"])
 def ledger():
-    """Audit ledger for the UI: every mapping made this session."""
-    session = get_session(request.args.get("session_id", "default"))
-    return jsonify({"ledger": session.ledger})
+    """Audit ledger for the UI: every mapping made this session.
+
+    Without a session_id, returns the merged ledger across all sessions
+    (what the desktop app shows).
+    """
+    session_id = request.args.get("session_id")
+    with _sessions_lock:
+        if session_id:
+            session = _sessions.get(session_id)
+            entries = list(session.ledger) if session else []
+        else:
+            entries = [e for s in _sessions.values() for e in s.ledger]
+    return jsonify({"ledger": entries})
+
+
+@app.route("/control", methods=["POST"])
+def control():
+    """
+    Runtime switches for the desktop app UI.
+    Expects: { "paused"?: bool, "semantic_enabled"?: bool }
+    Returns the resulting control state.
+    """
+    body = request.json or {}
+    with _control_lock:
+        for key in ("paused", "semantic_enabled"):
+            if key in body:
+                _control[key] = bool(body[key])
+    return jsonify({"paused": _control["paused"],
+                    "semantic_enabled": _control["semantic_enabled"],
+                    "engine": engine_name()})
 
 
 @app.route("/clear_session", methods=["POST"])
@@ -189,14 +237,24 @@ def clear_session():
 
 @app.route("/status", methods=["GET"])
 def status():
+    with _sessions_lock:
+        stats = {
+            "masked": sum(len(s.ledger) for s in _sessions.values()),
+            "turns": sum(s.turns for s in _sessions.values()),
+            "sent_raw": sum(s.sent_raw for s in _sessions.values()),
+        }
+        active = len(_sessions)
     return jsonify({
-        "engine": "hybrid" if detector.ready else "deterministic-only",
+        "engine": engine_name(),
+        "paused": _control["paused"],
+        "semantic_enabled": _control["semantic_enabled"],
         "model": MODEL_ID,
         "model_loaded": detector.ready,
         "model_error": detector.load_error,
         "network": "127.0.0.1 only — no telemetry, no external calls after model download",
         "storage": "session-only (RAM); nothing persisted to disk",
-        "active_sessions": len(_sessions),
+        "active_sessions": active,
+        "stats": stats,
     })
 
 

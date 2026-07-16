@@ -1,0 +1,17 @@
+{
+  "name": "vigilmask",
+  "productName": "VigilMask",
+  "version": "0.1.0",
+  "description": "Local-first privacy shield for AI chat — desktop app",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  },
+  "allowScripts": {
+    "electron@38.8.6": true
+  }
+}
