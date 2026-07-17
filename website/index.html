@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VigilMask — Every prompt is a record</title>
+<meta name="description" content="VigilMask redacts your prompts locally before they become someone else's record." />
+<style>
+  /* Self-hosted fonts — no external connections, anywhere. */
+  @font-face {
+    font-family: 'Archivo'; font-style: normal; font-weight: 500; font-display: swap;
+    src: url('assets/fonts/archivo-v25-latin-500.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Archivo'; font-style: normal; font-weight: 700; font-display: swap;
+    src: url('assets/fonts/archivo-v25-latin-700.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Archivo'; font-style: normal; font-weight: 800; font-display: swap;
+    src: url('assets/fonts/archivo-v25-latin-800.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Archivo'; font-style: normal; font-weight: 900; font-display: swap;
+    src: url('assets/fonts/archivo-v25-latin-900.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url('assets/fonts/ibm-plex-mono-v20-latin-regular.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'IBM Plex Mono'; font-style: italic; font-weight: 400; font-display: swap;
+    src: url('assets/fonts/ibm-plex-mono-v20-latin-italic.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap;
+    src: url('assets/fonts/ibm-plex-mono-v20-latin-500.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600; font-display: swap;
+    src: url('assets/fonts/ibm-plex-mono-v20-latin-600.woff2') format('woff2');
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #121416;          /* dark graphite base */
+    --ink-2: #17191c;
+    --paper: #1c1f22;        /* panels */
+    --paper-2: #212528;
+    --rule: rgba(232,236,236,0.09);
+    --rule-hard: rgba(232,236,236,0.16);
+    --turq-deep: #0e3b38;    /* dark turquoise surface */
+    --turq-mid: #14524d;
+    --turq: #2bb39c;         /* live accent */
+    --turq-dim: #1c7f70;
+    --text: #e8ecec;
+    --sub: #8b9797;
+    --sub-2: #5f6b6b;
+    --redact: #2a2e31;       /* redaction bar grey */
+    --display: 'Archivo', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  body {
+    background: var(--ink);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* subtle paper grain */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.35;
+    background-image: radial-gradient(rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 3px 3px;
+  }
+
+  ::selection { background: rgba(43,179,156,0.3); }
+  a { color: var(--turq); text-decoration: none; }
+
+  button:focus-visible, a:focus-visible {
+    outline: 2px solid var(--turq);
+    outline-offset: 2px;
+  }
+
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 2; }
+
+  /* ================= top bar ================= */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    border-bottom: 1px solid var(--rule);
+    background: rgba(18,20,22,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .topbar-inner {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .stamp-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .stamp-box {
+    border: 2px solid var(--turq);
+    color: var(--turq);
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 2.5px;
+    padding: 4px 10px 3px;
+    transform: rotate(-2deg);
+    text-transform: uppercase;
+  }
+  .stamp-sub {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--sub-2);
+    text-transform: uppercase;
+  }
+  .top-links { display: flex; gap: 26px; align-items: center; }
+  .top-links a {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sub);
+    transition: color 0.15s ease;
+  }
+  .top-links a:hover { color: var(--turq); }
+  .top-links .dl {
+    border: 1px solid var(--turq-dim);
+    color: var(--turq);
+    padding: 7px 14px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .top-links .dl:hover { background: var(--turq); color: var(--ink); }
+  @media (max-width: 700px) {
+    .top-links a:not(.dl) { display: none; }
+    .stamp-sub { display: none; }
+  }
+
+  /* ================= hero: the intercept ================= */
+  .hero {
+    padding: 150px 0 90px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  .file-meta {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    font-size: 10.5px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--sub-2);
+    margin-bottom: 34px;
+  }
+  .file-meta b { color: var(--sub); font-weight: 500; }
+  .file-meta .live { color: var(--turq); }
+  .file-meta .live::before {
+    content: '●';
+    margin-right: 6px;
+    animation: blink 1.6s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.2; } }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(40px, 7.2vw, 84px);
+    line-height: 0.98;
+    letter-spacing: -1.5px;
+    text-transform: uppercase;
+    max-width: 900px;
+  }
+  h1 .bar {
+    display: inline-block;
+    background: var(--turq-deep);
+    color: var(--turq);
+    padding: 0 14px 4px;
+    position: relative;
+  }
+  .hero-lede {
+    margin-top: 30px;
+    max-width: 560px;
+    color: var(--sub);
+    font-size: 14px;
+    line-height: 1.75;
+  }
+  .hero-lede b { color: var(--text); font-weight: 500; }
+
+  /* the intercept document */
+  .intercept {
+    margin-top: 56px;
+    background: var(--paper);
+    border: 1px solid var(--rule-hard);
+    position: relative;
+    overflow: hidden;
+  }
+  .intercept-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sub-2);
+  }
+  .intercept-head .status { color: var(--turq); transition: color 0.3s ease; }
+  .intercept-head .status.raw { color: #c96b4a; }
+  .intercept-body {
+    padding: 30px 34px 34px;
+    font-size: clamp(14px, 1.9vw, 17px);
+    line-height: 2.05;
+    min-height: 190px;
+    position: relative;
+  }
+  @media (max-width: 600px) { .intercept-body { padding: 22px 18px 26px; } }
+
+  .ent {
+    position: relative;
+    display: inline;
+    padding: 2px 4px;
+    border-radius: 2px;
+    transition: background 0.35s ease, color 0.35s ease;
+    white-space: nowrap;
+  }
+  .ent.flag {
+    background: rgba(201,107,74,0.16);
+    color: #e0906f;
+    box-shadow: 0 0 0 1px rgba(201,107,74,0.35);
+  }
+  .ent.masked {
+    background: var(--turq-deep);
+    color: var(--turq);
+    box-shadow: none;
+    font-weight: 500;
+  }
+
+  .scanline {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--turq);
+    box-shadow: 0 0 18px rgba(43,179,156,0.8);
+    left: -5%;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sanitized-stamp {
+    position: absolute;
+    right: 26px;
+    bottom: 20px;
+    border: 2.5px solid var(--turq);
+    color: var(--turq);
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 3px;
+    padding: 6px 16px 5px;
+    transform: rotate(-6deg) scale(0.6);
+    opacity: 0;
+    text-transform: uppercase;
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
+    pointer-events: none;
+    background: rgba(18,20,22,0.6);
+  }
+  .sanitized-stamp.show { opacity: 1; transform: rotate(-6deg) scale(1); }
+
+  .intercept-foot {
+    border-top: 1px solid var(--rule);
+    padding: 11px 18px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--sub-2);
+  }
+  .intercept-foot .count { color: var(--turq); }
+
+  .hero-ctas { display: flex; gap: 14px; margin-top: 40px; flex-wrap: wrap; }
+  .cta-solid {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    background: var(--turq);
+    color: var(--ink);
+    border: 1px solid var(--turq);
+    padding: 15px 28px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s ease, transform 0.15s ease;
+    display: inline-block;
+  }
+  .cta-solid:hover { background: #3fcbb2; transform: translateY(-2px); }
+  .cta-line {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--sub);
+    border: 1px solid var(--rule-hard);
+    padding: 15px 28px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+    display: inline-block;
+  }
+  .cta-line:hover { color: var(--turq); border-color: var(--turq-dim); }
+
+  /* ================= ticker ================= */
+  .ticker {
+    border-bottom: 1px solid var(--rule);
+    background: var(--ink-2);
+    overflow: hidden;
+    padding: 13px 0;
+    white-space: nowrap;
+    position: relative;
+    z-index: 2;
+  }
+  .ticker-track {
+    display: inline-block;
+    animation: ticker 40s linear infinite;
+  }
+  @keyframes ticker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .ticker span {
+    font-size: 10.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--sub-2);
+    margin: 0 26px;
+  }
+  .ticker span b { color: var(--turq); font-weight: 500; }
+  @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+
+  /* ================= sections ================= */
+  section { padding: 100px 0; border-bottom: 1px solid var(--rule); position: relative; z-index: 2; }
+
+  .sec-label {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 44px;
+  }
+  .sec-label .exhibit {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--ink);
+    background: var(--turq);
+    padding: 4px 10px 3px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .sec-label .rule-line { flex: 1; height: 1px; background: var(--rule-hard); }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(28px, 4vw, 46px);
+    line-height: 1.05;
+    letter-spacing: -0.8px;
+    text-transform: uppercase;
+    max-width: 700px;
+  }
+  .sec-sub {
+    margin-top: 20px;
+    color: var(--sub);
+    max-width: 540px;
+    font-size: 13.5px;
+    line-height: 1.75;
+  }
+
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } }
+
+  /* ================= the record (argument) ================= */
+  .ledger {
+    margin-top: 56px;
+    border: 1px solid var(--rule-hard);
+  }
+  .ledger-row {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    border-bottom: 1px solid var(--rule);
+    transition: background 0.2s ease;
+  }
+  .ledger-row:last-child { border-bottom: none; }
+  .ledger-row:hover { background: rgba(43,179,156,0.03); }
+  .ledger-key {
+    padding: 24px 20px;
+    border-right: 1px solid var(--rule);
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--turq);
+    background: var(--ink-2);
+  }
+  .ledger-val { padding: 24px 26px; }
+  .ledger-val h3 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: 0.2px;
+    margin-bottom: 8px;
+  }
+  .ledger-val p { color: var(--sub); font-size: 13px; line-height: 1.7; max-width: 640px; }
+  .ledger-val p b { color: var(--text); font-weight: 500; }
+  @media (max-width: 640px) {
+    .ledger-row { grid-template-columns: 1fr; }
+    .ledger-key { border-right: none; border-bottom: 1px solid var(--rule); padding: 14px 20px; }
+  }
+
+  /* redaction reveal inline device */
+  .rx {
+    background: var(--redact);
+    color: transparent;
+    border-radius: 2px;
+    padding: 0 3px;
+    cursor: pointer;
+    transition: background 0.25s ease, color 0.25s ease;
+    user-select: none;
+  }
+  .rx:hover, .rx.open {
+    background: var(--turq-deep);
+    color: var(--turq);
+  }
+  .rx-hint {
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--sub-2);
+    margin-top: 18px;
+  }
+
+  /* ================= pipeline ================= */
+  .pipeline {
+    margin-top: 56px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 0;
+    align-items: stretch;
+  }
+  @media (max-width: 820px) {
+    .pipeline { grid-template-columns: 1fr; }
+    .pipe-joint { transform: rotate(90deg); margin: 4px auto; }
+  }
+  .pipe-stage {
+    border: 1px solid var(--rule-hard);
+    background: var(--paper);
+    padding: 26px 24px;
+    position: relative;
+    transition: border-color 0.2s ease;
+  }
+  .pipe-stage:hover { border-color: var(--turq-dim); }
+  .pipe-stage.on-device::after {
+    content: 'YOUR DEVICE';
+    position: absolute;
+    top: -9px; left: 16px;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--turq);
+    background: var(--ink);
+    padding: 0 8px;
+  }
+  .pipe-stage.off-device::after {
+    content: 'THEIR SERVERS';
+    position: absolute;
+    top: -9px; left: 16px;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--sub-2);
+    background: var(--ink);
+    padding: 0 8px;
+  }
+  .pipe-stage h3 {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .pipe-stage p { color: var(--sub); font-size: 12.5px; line-height: 1.7; }
+  .pipe-sample {
+    margin-top: 16px;
+    padding: 10px 12px;
+    background: var(--ink-2);
+    border: 1px solid var(--rule);
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--sub);
+    word-break: break-word;
+  }
+  .pipe-sample .tk { color: var(--turq); background: var(--turq-deep); padding: 1px 4px; border-radius: 2px; }
+  .pipe-joint {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    color: var(--turq-dim);
+    font-size: 18px;
+  }
+
+  /* ================= dossier articles ================= */
+  .dossier { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; margin-top: 56px; border: 1px solid var(--rule-hard); }
+  @media (max-width: 860px) { .dossier { grid-template-columns: 1fr; } }
+  .doc {
+    padding: 30px 26px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    color: var(--text);
+    display: block;
+    position: relative;
+    transition: background 0.2s ease;
+  }
+  .doc:nth-child(3n) { border-right: none; }
+  .doc:nth-last-child(-n+3) { border-bottom: none; }
+  @media (max-width: 860px) {
+    .doc { border-right: none; }
+    .doc:not(:last-child) { border-bottom: 1px solid var(--rule); }
+  }
+  .doc:hover { background: rgba(43,179,156,0.04); }
+  .doc-no {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--sub-2);
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .doc-no .class { color: var(--turq); }
+  .doc h3 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 17px;
+    line-height: 1.25;
+    letter-spacing: 0.1px;
+    margin-bottom: 10px;
+    min-height: 44px;
+  }
+  .doc p { color: var(--sub); font-size: 12.5px; line-height: 1.7; }
+  .doc .open-doc {
+    margin-top: 18px;
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--turq);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .doc .open-doc::after { content: '→'; transition: transform 0.2s ease; }
+  .doc:hover .open-doc::after { transform: translateX(4px); }
+
+  /* ================= terms (pricing) ================= */
+  .terms { margin-top: 56px; border: 1px solid var(--rule-hard); }
+  .terms-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  @media (max-width: 820px) { .terms-row { grid-template-columns: 1fr; } }
+  .term {
+    padding: 34px 30px;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+  }
+  .term:last-child { border-right: none; }
+  @media (max-width: 820px) {
+    .term { border-right: none; }
+    .term:not(:last-child) { border-bottom: 1px solid var(--rule); }
+  }
+  .term.hot { background: linear-gradient(180deg, rgba(14,59,56,0.35), transparent 60%); }
+  .term-name {
+    font-size: 10.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--sub);
+  }
+  .term.hot .term-name { color: var(--turq); }
+  .term-price {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 46px;
+    letter-spacing: -1px;
+    margin-top: 12px;
+    line-height: 1;
+  }
+  .term-price span { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--sub-2); letter-spacing: 1px; }
+  .term ul { list-style: none; margin: 24px 0 28px; flex: 1; }
+  .term li {
+    font-size: 12.5px;
+    color: var(--sub);
+    padding: 7px 0;
+    border-bottom: 1px dashed var(--rule);
+    line-height: 1.55;
+  }
+  .term li::before { content: '+ '; color: var(--turq); }
+  .term li:last-child { border-bottom: none; }
+  .term .cta-solid, .term .cta-line { text-align: center; }
+  .terms-note {
+    border-top: 1px solid var(--rule);
+    padding: 18px 30px;
+    font-size: 11.5px;
+    color: var(--sub-2);
+    line-height: 1.7;
+  }
+  .terms-note b { color: var(--turq); font-weight: 500; }
+
+  /* ================= verification ================= */
+  .verify-grid {
+    margin-top: 56px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--rule-hard);
+  }
+  @media (max-width: 900px) { .verify-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .verify-grid { grid-template-columns: 1fr; } }
+  .verify-cell {
+    padding: 28px 24px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .verify-cell:nth-child(4n) { border-right: none; }
+  .verify-cell:nth-last-child(-n+4) { border-bottom: none; }
+  @media (max-width: 900px) {
+    .verify-cell:nth-child(4n) { border-right: 1px solid var(--rule); }
+    .verify-cell:nth-child(2n) { border-right: none; }
+    .verify-cell:nth-last-child(-n+4) { border-bottom: 1px solid var(--rule); }
+    .verify-cell:nth-last-child(-n+2) { border-bottom: none; }
+  }
+  .verify-cell .k {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 26px;
+    color: var(--turq);
+    letter-spacing: -0.5px;
+  }
+  .verify-cell .l {
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sub-2);
+    margin-top: 8px;
+    line-height: 1.6;
+  }
+
+  /* ================= closing ================= */
+  .closing { text-align: center; border-bottom: none; padding-bottom: 120px; }
+  .closing h2 { margin: 0 auto; max-width: 760px; }
+  .closing h2 .bar {
+    display: inline-block;
+    background: var(--turq-deep);
+    color: var(--turq);
+    padding: 0 12px 3px;
+  }
+  .closing .sec-sub { margin-left: auto; margin-right: auto; }
+  .closing .hero-ctas { justify-content: center; }
+
+  /* ================= footer ================= */
+  footer {
+    border-top: 1px solid var(--rule);
+    background: var(--ink-2);
+    padding: 40px 0;
+    position: relative;
+    z-index: 2;
+  }
+  .foot-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .foot-links { display: flex; gap: 22px; flex-wrap: wrap; }
+  .foot-links a {
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sub-2);
+    transition: color 0.15s ease;
+  }
+  .foot-links a:hover { color: var(--turq); }
+  .foot-sig {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sub-2);
+  }
+  .foot-sig b { color: var(--turq); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="#top" class="stamp-brand">
+      <span class="stamp-box">VigilMask</span>
+      <span class="stamp-sub">Local redaction authority · v0.9</span>
+    </a>
+    <div class="top-links">
+      <a href="#record">The record</a>
+      <a href="#pipeline">Procedure</a>
+      <a href="#dossier">Dossier</a>
+      <a href="#terms">Terms</a>
+      <a href="#download" class="dl">Download</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="file-meta">
+      <span>File: <b>PROMPT_2026-07-16.TXT</b></span>
+      <span>Origin: <b>THIS DEVICE</b></span>
+      <span>Destination: <b>CLOUD LLM</b></span>
+      <span class="live">Interception active</span>
+    </div>
+
+    <h1>Every prompt<br>is a <span class="bar">record.</span><br>Redact yours.</h1>
+
+    <p class="hero-lede">Whatever you type into a cloud AI becomes a document on someone else's infrastructure — storable, searchable, subpoenable. <b>VigilMask intercepts your prompt on your own machine</b>, strikes the sensitive parts, and sends only the redacted copy. The originals never leave.</p>
+
+    <!-- the intercept document -->
+    <div class="intercept" aria-label="Live demonstration of prompt redaction">
+      <div class="intercept-head">
+        <span>Intercepted outbound prompt</span>
+        <span class="status raw" id="icStatus">UNSAFE — CONTAINS IDENTIFIERS</span>
+      </div>
+      <div class="intercept-body" id="icBody">
+        <div class="scanline" id="scanline"></div>
+        <span id="icText"></span>
+        <div class="sanitized-stamp" id="stamp">Sanitized</div>
+      </div>
+      <div class="intercept-foot">
+        <span>Processed locally · zero bytes of PII transmitted</span>
+        <span class="count" id="icCount">0 entities struck</span>
+      </div>
+    </div>
+
+    <div class="hero-ctas">
+      <a href="#download" class="cta-solid">Begin redacting</a>
+      <a href="#pipeline" class="cta-line">Review procedure</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============ TICKER ============ -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track" id="tickerTrack">
+    <span>Names <b>[PERSON]</b></span><span>Addresses <b>[ADDRESS]</b></span><span>Emails <b>[EMAIL]</b></span><span>Phone numbers <b>[PHONE]</b></span><span>Card numbers <b>[CARD]</b></span><span>National IDs <b>[ID]</b></span><span>IP addresses <b>[IP]</b></span><span>Locations <b>[PLACE]</b></span><span>Medical details <b>[HEALTH]</b></span><span>Client names <b>[ORG]</b></span><span>Struck locally, before transmission</span>
+  </div>
+</div>
+
+<!-- ============ THE RECORD ============ -->
+<section id="record">
+  <div class="wrap">
+    <div class="sec-label reveal"><span class="exhibit">Exhibit A</span><span class="rule-line"></span></div>
+    <h2 class="reveal">What a prompt becomes once it leaves.</h2>
+    <p class="sec-sub reveal">Not an accusation — an inventory. This is the documented life cycle of text handed to a cloud service.</p>
+
+    <div class="ledger reveal">
+      <div class="ledger-row">
+        <div class="ledger-key">Stored</div>
+        <div class="ledger-val">
+          <h3>It persists after you close the tab</h3>
+          <p>Providers retain prompts for varying windows — for abuse monitoring, product improvement, sometimes model training. Retention policies change; <b>copies already made don't</b>.</p>
+        </div>
+      </div>
+      <div class="ledger-row">
+        <div class="ledger-key">Compelled</div>
+        <div class="ledger-val">
+          <h3>It can be legally demanded</h3>
+          <p>Anything a company holds can be subject to subpoenas, court orders, and preservation requests. Your <span class="rx" tabindex="0">chat history</span> is discoverable the way <span class="rx" tabindex="0">email</span> is — because legally, it's just business records.</p>
+        </div>
+      </div>
+      <div class="ledger-row">
+        <div class="ledger-key">Breached</div>
+        <div class="ledger-val">
+          <h3>It can leak like anything else</h3>
+          <p>Every stored dataset is a future breach candidate. The safest data is data that was <b>never collected</b> — a placeholder can't be leaked back to you.</p>
+        </div>
+      </div>
+      <div class="ledger-row">
+        <div class="ledger-key">Correlated</div>
+        <div class="ledger-val">
+          <h3>It joins everything else known about you</h3>
+          <p>A name here, an address there, a health question last month. Individually small; together, a profile. Redaction breaks the joins.</p>
+        </div>
+      </div>
+    </div>
+    <div class="rx-hint reveal">▸ Redacted terms above reveal on hover — the way your data shouldn't.</div>
+  </div>
+</section>
+
+<!-- ============ PROCEDURE ============ -->
+<section id="pipeline">
+  <div class="wrap">
+    <div class="sec-label reveal"><span class="exhibit">Exhibit B</span><span class="rule-line"></span></div>
+    <h2 class="reveal">The redaction procedure.</h2>
+    <p class="sec-sub reveal">A small language model runs entirely on your device — multilingual entity detection, not English-only pattern matching. Three stages. Two of them never touch a network.</p>
+
+    <div class="pipeline reveal">
+      <div class="pipe-stage on-device">
+        <h3>01 / Strike</h3>
+        <p>The local model reads your draft and flags every identifying entity before anything is transmitted.</p>
+        <div class="pipe-sample">Hi, this is <span class="tk">Anna Weber</span> from <span class="tk">Frankfurt</span>, my email is <span class="tk">a.weber@mail.de</span>…</div>
+      </div>
+      <div class="pipe-joint">→</div>
+      <div class="pipe-stage off-device">
+        <h3>02 / Transmit</h3>
+        <p>Only the redacted copy travels. The provider answers a prompt about placeholders — it never holds the originals.</p>
+        <div class="pipe-sample">Hi, this is <span class="tk">[PERSON_1]</span> from <span class="tk">[PLACE_1]</span>, my email is <span class="tk">[EMAIL_1]</span>…</div>
+      </div>
+      <div class="pipe-joint">→</div>
+      <div class="pipe-stage on-device">
+        <h3>03 / Restore</h3>
+        <p>The response returns, and the real values are swapped back in locally. Full answer for you; blanks for them.</p>
+        <div class="pipe-sample">Dear <span class="tk">Anna Weber</span>, regarding your request from <span class="tk">Frankfurt</span>…</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DOSSIER ============ -->
+<section id="dossier">
+  <div class="wrap">
+    <div class="sec-label reveal"><span class="exhibit">Exhibit C</span><span class="rule-line"></span></div>
+    <h2 class="reveal">The dossier: read before you paste.</h2>
+    <p class="sec-sub reveal">Sourced articles on how surveillance and data collection actually operate. No slogans — citations.</p>
+
+    <div class="dossier reveal">
+      <a class="doc" href="#">
+        <div class="doc-no"><span>DOC 001</span><span class="class">Data brokers</span></div>
+        <h3>What data brokers actually know about you</h3>
+        <p>How a full profile gets assembled from thousands of small leaks — and why prompts are becoming one of them.</p>
+        <span class="open-doc">Open document</span>
+      </a>
+      <a class="doc" href="#">
+        <div class="doc-no"><span>DOC 002</span><span class="class">AI systems</span></div>
+        <h3>Where your prompt goes after you press send</h3>
+        <p>Processing, retention windows, and who can legally demand access — traced step by step.</p>
+        <span class="open-doc">Open document</span>
+      </a>
+      <a class="doc" href="#">
+        <div class="doc-no"><span>DOC 003</span><span class="class">Surveillance</span></div>
+        <h3>A short history of bulk collection</h3>
+        <p>What has been documented, what changed after each revelation — and what quietly didn't.</p>
+        <span class="open-doc">Open document</span>
+      </a>
+      <a class="doc" href="#">
+        <div class="doc-no"><span>DOC 004</span><span class="class">Argument</span></div>
+        <h3>"Nothing to hide" doesn't hold up</h3>
+        <p>Privacy isn't about concealing wrongdoing. It's about who decides — and what happens when the rules change.</p>
+        <span class="open-doc">Open document</span>
+      </a>
+      <a class="doc" href="#">
+        <div class="doc-no"><span>DOC 005</span><span class="class">Methods</span></div>
+        <h3>How "anonymous" data gets traced back</h3>
+        <p>Re-identification, demonstrated repeatedly by researchers. Placeholders beat promises.</p>
+        <span class="open-doc">Open document</span>
+      </a>
+      <a class="doc" href="#">
+        <div class="doc-no"><span>DOC 006</span><span class="class">Field guide</span></div>
+        <h3>What leaks when you paste into a chatbot</h3>
+        <p>Client names, medical details, internal documents — the sensitive material people paste daily without noticing.</p>
+        <span class="open-doc">Open document</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TERMS ============ -->
+<section id="terms">
+  <div class="wrap">
+    <div class="sec-label reveal"><span class="exhibit">Exhibit D</span><span class="rule-line"></span></div>
+    <h2 class="reveal">Terms of protection.</h2>
+    <p class="sec-sub reveal">The shield is identical on every plan. Money buys breadth and convenience — never a better redaction.</p>
+
+    <div class="terms reveal">
+      <div class="terms-row">
+        <div class="term">
+          <div class="term-name">Free / Standing order</div>
+          <div class="term-price">€0 <span>FOREVER</span></div>
+          <ul>
+            <li>Full local redaction engine</li>
+            <li>All core entity types</li>
+            <li>Desktop app + browser extension</li>
+            <li>Works fully offline, no account</li>
+          </ul>
+          <a href="#download" class="cta-line">Download</a>
+        </div>
+        <div class="term hot">
+          <div class="term-name">Plus / Extended mandate</div>
+          <div class="term-price">€4 <span>/ MONTH</span></div>
+          <ul>
+            <li>Extended multilingual model</li>
+            <li>Custom entity types &amp; house rules</li>
+            <li>Sync via anonymous account number</li>
+            <li>Priority model updates</li>
+          </ul>
+          <a href="#download" class="cta-solid">Get Plus</a>
+        </div>
+        <div class="term">
+          <div class="term-name">Teams / Joint operation</div>
+          <div class="term-price">€9 <span>/ SEAT / MO</span></div>
+          <ul>
+            <li>Shared redaction policies</li>
+            <li>Local-only audit log per device</li>
+            <li>For firms handling client data</li>
+            <li>Priority support</li>
+          </ul>
+          <a href="#download" class="cta-line">Contact us</a>
+        </div>
+      </div>
+      <div class="terms-note"><b>Clause 1:</b> a privacy tool that protects you less unless you pay would be a protection racket. The engine is the same binary on every tier. Subscriptions fund development; they do not purchase safety.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERIFICATION ============ -->
+<section id="verify">
+  <div class="wrap">
+    <div class="sec-label reveal"><span class="exhibit">Exhibit E</span><span class="rule-line"></span></div>
+    <h2 class="reveal">Verification, not trust.</h2>
+    <p class="sec-sub reveal">Claims are cheap in this business. These are the four you can check yourself.</p>
+
+    <div class="verify-grid reveal">
+      <div class="verify-cell">
+        <div class="k">100%</div>
+        <div class="l">Of the redaction engine is open source. Read it, build it, diff it against what we ship.</div>
+      </div>
+      <div class="verify-cell">
+        <div class="k">0</div>
+        <div class="l">Background connections. No telemetry, no analytics, no "anonymous statistics." Watch the traffic yourself.</div>
+      </div>
+      <div class="verify-cell">
+        <div class="k">Ø</div>
+        <div class="l">Emails or passwords. Optional sync uses a random account number that identifies nothing about you.</div>
+      </div>
+      <div class="verify-cell">
+        <div class="k">1</div>
+        <div class="l">Independent audit before v1.0 — published here in full, unedited, including the findings we don't like.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CLOSING ============ -->
+<section class="closing" id="download">
+  <div class="wrap reveal">
+    <h2>The best record is the one that was <span class="bar">never made.</span></h2>
+    <p class="sec-sub">Free, open source, running in under a minute. Windows, macOS, Linux — extensions for Chrome and Firefox.</p>
+    <div class="hero-ctas">
+      <a href="#" class="cta-solid">Download VigilMask</a>
+      <a href="#" class="cta-line">Inspect the source</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap foot-inner">
+    <div class="foot-links">
+      <a href="#record">The record</a>
+      <a href="#pipeline">Procedure</a>
+      <a href="#dossier">Dossier</a>
+      <a href="#terms">Terms</a>
+      <a href="#">Privacy policy</a>
+      <a href="#">Source</a>
+    </div>
+    <div class="foot-sig">© 2026 VigilMask · <b>nothing leaves this device</b></div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- scroll reveal ---------- */
+  var revealEls = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && !reducedMotion) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { entry.target.classList.add('in'); io.unobserve(entry.target); }
+      });
+    }, { threshold: 0.12 });
+    revealEls.forEach(function (el) { io.observe(el); });
+  } else {
+    revealEls.forEach(function (el) { el.classList.add('in'); });
+  }
+
+  /* ---------- redaction reveal (tap for touch devices) ---------- */
+  document.querySelectorAll('.rx').forEach(function (el) {
+    el.addEventListener('click', function () { el.classList.toggle('open'); });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.classList.toggle('open'); }
+    });
+  });
+
+  /* ---------- ticker: duplicate content for seamless loop ---------- */
+  var track = document.getElementById('tickerTrack');
+  track.innerHTML += track.innerHTML;
+
+  /* ---------- the intercept: typewriter → scan → strike loop ---------- */
+  var icText = document.getElementById('icText');
+  var icStatus = document.getElementById('icStatus');
+  var icCount = document.getElementById('icCount');
+  var icBody = document.getElementById('icBody');
+  var scanline = document.getElementById('scanline');
+  var stamp = document.getElementById('stamp');
+
+  // segments: [text] or [text, token] — token means entity
+  var samples = [
+    [
+      ['Draft an email to my landlord. My name is '],
+      ['Anna Weber', '[PERSON_1]'],
+      [', I live at '],
+      ['Bergstraße 14, 60316 Frankfurt', '[ADDRESS_1]'],
+      [', and my number is '],
+      ['+49 170 555 0182', '[PHONE_1]'],
+      ['. The heating has been broken since Tuesday.']
+    ],
+    [
+      ['Summarize this patient note: '],
+      ['Daniel Okafor', '[PERSON_1]'],
+      [', DOB '],
+      ['03/11/1987', '[DOB_1]'],
+      [', reports migraines. Insurance ID '],
+      ['KV-4482-9917', '[ID_1]'],
+      ['. Suggest three follow-up questions.']
+    ],
+    [
+      ['Review this contract clause for '],
+      ['Meridian Logistics GmbH', '[ORG_1]'],
+      [' — the counterparty contact is '],
+      ['s.lindqvist@meridian.example', '[EMAIL_1]'],
+      [', invoice ref '],
+      ['4111 2202 8834 0091', '[CARD_1]'],
+      ['. Is the liability cap enforceable?']
+    ]
+  ];
+
+  var sampleIdx = 0;
+
+  function buildSegments(sample) {
+    icText.innerHTML = '';
+    var entityEls = [];
+    sample.forEach(function (seg) {
+      if (seg.length === 2) {
+        var span = document.createElement('span');
+        span.className = 'ent';
+        span.dataset.token = seg[1];
+        span.dataset.original = seg[0];
+        icText.appendChild(span);
+        entityEls.push(span);
+      } else {
+        icText.appendChild(document.createElement('span'));
+      }
+    });
+    return entityEls;
+  }
+
+  function typeSample(sample, done) {
+    var spans = icText.children;
+    var segIdx = 0, charIdx = 0;
+    function tick() {
+      if (segIdx >= sample.length) { done(); return; }
+      var seg = sample[segIdx];
+      var full = seg[0];
+      charIdx += 2 + Math.floor(Math.random() * 2);
+      if (charIdx >= full.length) {
+        spans[segIdx].textContent = full;
+        segIdx++; charIdx = 0;
+        setTimeout(tick, 20);
+      } else {
+        spans[segIdx].textContent = full.slice(0, charIdx);
+        setTimeout(tick, 18);
+      }
+    }
+    tick();
+  }
+
+  function animate(el, keyframes, opts) {
+    if (el.animate) return el.animate(keyframes, opts);
+    return { onfinish: null };
+  }
+
+  function runCycle() {
+    var sample = samples[sampleIdx];
+    sampleIdx = (sampleIdx + 1) % samples.length;
+
+    var entityEls = buildSegments(sample);
+    icStatus.textContent = 'UNSAFE — CONTAINS IDENTIFIERS';
+    icStatus.classList.add('raw');
+    icCount.textContent = '0 entities struck';
+    stamp.classList.remove('show');
+
+    if (reducedMotion) {
+      // static: show fully masked, no animation
+      var spans = icText.children;
+      sample.forEach(function (seg, i) { spans[i].textContent = seg.length === 2 ? seg[1] : seg[0]; });
+      entityEls.forEach(function (el) { el.classList.add('masked'); });
+      icStatus.textContent = 'SANITIZED — SAFE TO TRANSMIT';
+      icStatus.classList.remove('raw');
+      icCount.textContent = entityEls.length + ' entities struck';
+      stamp.classList.add('show');
+      return;
+    }
+
+    typeSample(sample, function () {
+      // flag entities
+      setTimeout(function () {
+        entityEls.forEach(function (el, i) {
+          setTimeout(function () { el.classList.add('flag'); }, i * 160);
+        });
+      }, 350);
+
+      // scanline sweep
+      setTimeout(function () {
+        scanline.style.opacity = '1';
+        var sweep = animate(scanline, [
+          { left: '-2%' }, { left: '102%' }
+        ], { duration: 900, easing: 'ease-in-out' });
+        sweep.onfinish = function () { scanline.style.opacity = '0'; };
+      }, 700);
+
+      // strike each entity → token
+      setTimeout(function () {
+        var struck = 0;
+        entityEls.forEach(function (el, i) {
+          setTimeout(function () {
+            el.textContent = el.dataset.token;
+            el.classList.remove('flag');
+            el.classList.add('masked');
+            struck++;
+            icCount.textContent = struck + ' entit' + (struck === 1 ? 'y' : 'ies') + ' struck';
+          }, 1300 + i * 300);
+        });
+
+        var total = 1300 + entityEls.length * 300 + 250;
+        setTimeout(function () {
+          icStatus.textContent = 'SANITIZED — SAFE TO TRANSMIT';
+          icStatus.classList.remove('raw');
+          stamp.classList.add('show');
+        }, total);
+
+        // next cycle
+        setTimeout(runCycle, total + 4200);
+      }, 400);
+    });
+  }
+
+  runCycle();
+})();
+</script>
+
+</body>
+</html>
