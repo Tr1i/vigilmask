@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DOC 002 — Where your prompt goes after you press send · VigilMask</title>
+<meta name="description" content="Processing, retention windows, and who can legally demand access — traced step by step." />
+<link rel="stylesheet" href="../assets/css/dossier.css">
+</head>
+<body>
+
+<div class="draft-banner"><b>Draft specimen</b> — this site is a design mockup. The product, pricing, audit and downloads described are planned, not yet real or in effect.</div>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="../index.html" class="stamp-brand">
+      <span class="stamp-box">VigilMask</span>
+      <span class="stamp-sub">Local redaction authority · v0.9</span>
+    </a>
+    <div class="top-links">
+      <a href="../index.html#record">The record</a>
+      <a href="../index.html#pipeline">Procedure</a>
+      <a href="../index.html#dossier">Dossier</a>
+      <a href="../index.html#terms">Terms</a>
+      <a href="../download.html" class="dl">Download</a>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+  <header>
+    <div class="art-meta">
+      <span>Doc <b>002 / 006</b></span>
+      <span class="class">AI systems</span>
+      <span>Status: <b>Documented</b></span>
+      <span>Read: <b>~7 min</b></span>
+    </div>
+    <h1>Where your prompt goes after you <span class="bar">press send</span></h1>
+    <p class="standfirst">The chat box feels like a scratchpad. It is actually a <b>submission form</b>. What you type is transmitted, processed, logged, and — depending on the provider, your tier, and your settings — retained, reviewed by humans, used for training, and producible in court. Traced step by step, from your keyboard outward.</p>
+  </header>
+
+  <article class="prose">
+    <h2>01 / Transmission and storage</h2>
+    <p>The moment you press send, the prompt leaves your jurisdiction of one. It crosses the network encrypted, but encryption in transit protects against eavesdroppers — not against the recipient. On the provider's infrastructure it is decrypted and processed, and in every mainstream consumer AI service, <b>logged</b>. Your conversation history exists because the provider stores it; that same storage is what makes everything below possible.</p>
+
+    <h2>02 / Training and human review</h2>
+    <p>Whether your words are used to train future models depends on toggles most users never open. OpenAI's consumer ChatGPT uses conversations to improve its models unless the user turns this off in settings.<sup><a href="#src">[01]</a></sup> Google states that conversations with its Gemini apps may be read by <b>human reviewers</b>, and that reviewed conversations are retained separately — its own privacy notice warns users not to enter confidential information.<sup><a href="#src">[02]</a></sup> Policies differ by provider and tier, and they change; the constant is that <b>the defaults are set by the company, not by you</b>.</p>
+    <p>Abuse and safety monitoring is a separate, near-universal channel: flagged conversations can be pulled out of the stream and looked at by staff. That is a reasonable thing for a provider to do — and it is also, mechanically, a person reading your prompt.</p>
+
+    <h2>03 / Retention — and what overrides it</h2>
+    <p>Deletion policies are real, but they are policies, not physics. OpenAI, for example, states that deleted consumer chats are removed from its systems within 30 days — <b>"unless legally required to retain them."</b><sup><a href="#src">[01]</a></sup> That clause did not stay theoretical:</p>
+    <div class="case">
+      <div class="case-tag">Case file · 2025</div>
+      <p>In the <i>New York Times v. OpenAI</i> copyright litigation, a federal magistrate judge ordered OpenAI to preserve all consumer ChatGPT and API output logs — <b>including conversations users had deleted</b> — as potential evidence. OpenAI publicly objected, calling the order a conflict with its privacy commitments, and the obligation was only narrowed months later.<sup><a href="#src">[03]</a></sup> For the duration, "deleted" chats of hundreds of millions of users were, by court order, not deleted.</p>
+    </div>
+    <p>The lesson generalizes past any one company: <b>a retention policy is subordinate to a court.</b> Whatever a provider promises about deletion, litigation holds, preservation orders and lawful-access demands sit above that promise.</p>
+
+    <h2>04 / Legal process</h2>
+    <p>Stored prompts are, in legal terms, business records held by a third party. That means they are reachable by subpoena, search warrant and court order, like email before them. Every major provider's privacy policy contains the standard clause: data may be disclosed in response to valid legal process. None of this requires wrongdoing by the provider — it is how the law treats <b>anything stored with someone else</b>.</p>
+
+    <div class="fact">
+      <div class="k">30 days</div>
+      <div class="l">OpenAI's stated deletion window for removed consumer chats — with the standing exception "unless legally required to retain them." In 2025, that exception governed.</div>
+    </div>
+
+    <h2>05 / The tier gradient</h2>
+    <p>Enterprise customers negotiate better terms: business tiers typically exclude training by default and offer shorter or zero retention. Notice the shape of that market — <b>privacy is priced.</b> Organizations that can pay get contractual data protection; individuals get defaults. (VigilMask's position on this gradient is stated in <a href="../index.html#terms">Clause 1 of the Terms</a>: protection should not scale with payment.)</p>
+
+    <h2>06 / The alternative: send less</h2>
+    <p>Everything above concerns what happens to data <b>after</b> it arrives. Each stage — storage, review, training, retention, legal process — operates only on what you transmit. The one variable fully under your control sits before transmission: a prompt that reads <b>⟦PERSON_1⟧ from ⟦PLACE_1⟧, insurance ID ⟦ID_1⟧</b> passes through every stage of this pipeline carrying nothing that identifies anyone. The provider still answers. The record it keeps is a record of placeholders.</p>
+    <p>That is the entire design argument for local redaction: not distrust of any particular company, but the observation that <b>the only copy you control is the one that hasn't left yet.</b></p>
+  </article>
+
+  <section class="sources" id="src">
+    <div class="sources-label"><span class="exhibit">Sources</span><span class="rule-line"></span></div>
+    <ol>
+      <li><div><a href="https://help.openai.com/en/articles/7730893-data-controls-faq" target="_blank" rel="noopener">Data Controls FAQ (training defaults, 30-day deletion window)</a><span class="src-pub">OpenAI Help Center</span></div></li>
+      <li><div><a href="https://support.google.com/gemini/answer/13594961" target="_blank" rel="noopener">Gemini Apps Privacy Hub (human review, retention, confidentiality warning)</a><span class="src-pub">Google</span></div></li>
+      <li><div><a href="https://openai.com/index/response-to-nyt-data-demands/" target="_blank" rel="noopener">How we're responding to The New York Times' data demands (preservation order)</a><span class="src-pub">OpenAI, June 2025; order issued in NYT v. OpenAI, S.D.N.Y., May 2025</span></div></li>
+    </ol>
+  </section>
+
+  <nav class="doc-nav">
+    <a class="prev" href="doc-001-data-brokers.html">← Prev · Doc 001<b>What data brokers actually know about you</b></a>
+    <a class="next" href="doc-003-bulk-collection.html">Next · Doc 003<b>A short history of bulk collection</b></a>
+  </nav>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="foot-links">
+      <a href="../index.html#record">The record</a>
+      <a href="../index.html#pipeline">Procedure</a>
+      <a href="../index.html#dossier">Dossier</a>
+      <a href="../index.html#terms">Terms</a>
+      <a href="../privacy.html">Privacy policy</a>
+      <a href="https://github.com/Tr1i/vigilmask" target="_blank" rel="noopener">Source</a>
+    </div>
+    <div class="foot-sig">© 2026 VigilMask · draft mockup · <b>nothing leaves this device</b></div>
+  </div>
+</footer>
+
+</body>
+</html>

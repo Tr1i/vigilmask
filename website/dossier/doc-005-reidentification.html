@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DOC 005 — How "anonymous" data gets traced back · VigilMask</title>
+<meta name="description" content="Re-identification, demonstrated repeatedly by researchers. Placeholders beat promises." />
+<link rel="stylesheet" href="../assets/css/dossier.css">
+</head>
+<body>
+
+<div class="draft-banner"><b>Draft specimen</b> — this site is a design mockup. The product, pricing, audit and downloads described are planned, not yet real or in effect.</div>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="../index.html" class="stamp-brand">
+      <span class="stamp-box">VigilMask</span>
+      <span class="stamp-sub">Local redaction authority · v0.9</span>
+    </a>
+    <div class="top-links">
+      <a href="../index.html#record">The record</a>
+      <a href="../index.html#pipeline">Procedure</a>
+      <a href="../index.html#dossier">Dossier</a>
+      <a href="../index.html#terms">Terms</a>
+      <a href="../download.html" class="dl">Download</a>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+  <header>
+    <div class="art-meta">
+      <span>Doc <b>005 / 006</b></span>
+      <span class="class">Methods</span>
+      <span>Status: <b>Documented</b></span>
+      <span>Read: <b>~6 min</b></span>
+    </div>
+    <h1>How "anonymous" data gets <span class="bar">traced back</span></h1>
+    <p class="standfirst">"Don't worry — the data is anonymized." That sentence has preceded most of the notable privacy failures of the last thirty years. The reason is mathematical, not moral: <b>you are more unique than you think</b>, and stripping names from a dataset barely reduces that uniqueness. The demonstrations below are the classics of the field, each replicated, none refuted.</p>
+  </header>
+
+  <article class="prose">
+    <h2>01 / Three facts suffice</h2>
+    <p>In 2000, Latanya Sweeney showed that <b>87% of the U.S. population</b> is uniquely identified by just three attributes: 5-digit ZIP code, gender, and date of birth.<sup><a href="#src">[01]</a></sup> She had already made the point unforgettable in 1997: when Massachusetts released "anonymized" state-employee hospital records, she cross-referenced them with the public voter roll — and mailed Governor William Weld his own medical file.</p>
+    <div class="fact">
+      <div class="k">87%</div>
+      <div class="l">Of Americans uniquely identified by ZIP code + gender + date of birth alone. Sweeney, 2000. No name required — the combination is the name.</div>
+    </div>
+
+    <h2>02 / The pattern repeats, dataset by dataset</h2>
+    <div class="case">
+      <div class="case-tag">2006 · AOL search logs</div>
+      <p>AOL published 20 million "anonymized" search queries for research, users replaced by numbers. Within days, New York Times reporters identified user No. 4417749 from her queries alone — Thelma Arnold, 62, of Lilburn, Georgia — and knocked on her door.<sup><a href="#src">[02]</a></sup> Searches, like prompts, are self-describing: the content identifies the author.</p>
+    </div>
+    <div class="case">
+      <div class="case-tag">2008 · Netflix Prize</div>
+      <p>Netflix released 100 million "anonymized" movie ratings for a public competition. Narayanan and Shmatikov showed that a handful of ratings and approximate dates — obtainable from public IMDb reviews — sufficed to re-identify subscribers, viewing histories and all.<sup><a href="#src">[03]</a></sup> After an FTC complaint and a lawsuit, the planned sequel competition was cancelled.</p>
+    </div>
+    <div class="case">
+      <div class="case-tag">2013–2015 · Movement and money</div>
+      <p>De Montjoye and colleagues showed that in a mobility dataset of 1.5 million people, <b>four spacetime points</b> — places and hours a phone was seen — uniquely identify 95% of individuals; four purchases do the same for 90% of credit-card users.<sup><a href="#src">[04]</a></sup> Where you were on four occasions <i>is</i> your name.</p>
+    </div>
+    <div class="case">
+      <div class="case-tag">2016 · Australian health records</div>
+      <p>Australia published a "de-identified" 10% sample of the national medical billing system. University of Melbourne researchers first decrypted provider IDs, then showed patients could be re-identified from known facts about them — including public information about celebrities and politicians. The dataset was withdrawn.<sup><a href="#src">[05]</a></sup></p>
+    </div>
+
+    <h2>03 / The general theorem</h2>
+    <p>In 2019, researchers at Imperial College London and UCLouvain generalized what the case files suggest: using standard demographic attributes, <b>99.98% of Americans would be correctly re-identified in any dataset containing 15 such attributes</b> — and they published a model showing that even heavily sampled, incomplete releases don't provide the protection their publishers claim.<sup><a href="#src">[06]</a></sup> "We only released a sample" is not a defense; it is a delay.</p>
+    <div class="fact">
+      <div class="k">99.98%</div>
+      <div class="l">Of Americans correctly re-identifiable from 15 demographic attributes. Rocher, Hendrickx &amp; de Montjoye, Nature Communications, 2019.</div>
+    </div>
+
+    <h2>04 / What this means for prompts</h2>
+    <p>Now read your own prompts as a re-identification scientist would. "Draft a complaint to my landlord at Bergstraße 14," "summarize this patient note, DOB 03/11/1987," "review this contract for Meridian Logistics GmbH" — each contains multiple quasi-identifiers, embedded in free text, accumulating in one account-linked history. Prompt logs are the AOL dataset with better grammar.</p>
+    <p>The engineering conclusion the research supports is the one Sweeney reached decades ago: <b>anonymization after collection is a promise; suppression before collection is a property.</b> A placeholder like ⟦ADDRESS_1⟧ carries zero bits of quasi-identifier. There is nothing to join, sample, or model — not because anyone promised, but because the data never existed on the other side. That property is the entire design brief of the <a href="../index.html#pipeline">redaction procedure</a>.</p>
+  </article>
+
+  <section class="sources" id="src">
+    <div class="sources-label"><span class="exhibit">Sources</span><span class="rule-line"></span></div>
+    <ol>
+      <li><div><a href="https://dataprivacylab.org/projects/identifiability/paper1.pdf" target="_blank" rel="noopener">Simple Demographics Often Identify People Uniquely (Latanya Sweeney)</a><span class="src-pub">Carnegie Mellon University, Data Privacy Working Paper 3, 2000</span></div></li>
+      <li><div><a href="https://www.nytimes.com/2006/08/09/technology/09aol.html" target="_blank" rel="noopener">A Face Is Exposed for AOL Searcher No. 4417749</a><span class="src-pub">The New York Times, August 2006</span></div></li>
+      <li><div><a href="https://www.cs.utexas.edu/~shmat/shmat_oak08netflix.pdf" target="_blank" rel="noopener">Robust De-anonymization of Large Sparse Datasets (Narayanan &amp; Shmatikov)</a><span class="src-pub">IEEE Symposium on Security &amp; Privacy, 2008</span></div></li>
+      <li><div><a href="https://www.nature.com/articles/srep01376" target="_blank" rel="noopener">Unique in the Crowd: The privacy bounds of human mobility (de Montjoye et al.)</a><span class="src-pub">Scientific Reports, 2013; companion study on credit-card metadata in Science, 2015</span></div></li>
+      <li><div><a href="https://arxiv.org/abs/1712.05627" target="_blank" rel="noopener">Health Data in an Open World (Culnane, Rubinstein &amp; Teague)</a><span class="src-pub">University of Melbourne, 2017</span></div></li>
+      <li><div><a href="https://www.nature.com/articles/s41467-019-10933-3" target="_blank" rel="noopener">Estimating the success of re-identifications in incomplete datasets (Rocher, Hendrickx &amp; de Montjoye)</a><span class="src-pub">Nature Communications, 2019</span></div></li>
+    </ol>
+  </section>
+
+  <nav class="doc-nav">
+    <a class="prev" href="doc-004-nothing-to-hide.html">← Prev · Doc 004<b>"Nothing to hide" doesn't hold up</b></a>
+    <a class="next" href="doc-006-chatbot-leaks.html">Next · Doc 006<b>What leaks when you paste into a chatbot</b></a>
+  </nav>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="foot-links">
+      <a href="../index.html#record">The record</a>
+      <a href="../index.html#pipeline">Procedure</a>
+      <a href="../index.html#dossier">Dossier</a>
+      <a href="../index.html#terms">Terms</a>
+      <a href="../privacy.html">Privacy policy</a>
+      <a href="https://github.com/Tr1i/vigilmask" target="_blank" rel="noopener">Source</a>
+    </div>
+    <div class="foot-sig">© 2026 VigilMask · draft mockup · <b>nothing leaves this device</b></div>
+  </div>
+</footer>
+
+</body>
+</html>

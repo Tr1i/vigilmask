@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DOC 006 — What leaks when you paste into a chatbot · VigilMask</title>
+<meta name="description" content="Client names, medical details, internal documents — the sensitive material people paste daily without noticing." />
+<link rel="stylesheet" href="../assets/css/dossier.css">
+</head>
+<body>
+
+<div class="draft-banner"><b>Draft specimen</b> — this site is a design mockup. The product, pricing, audit and downloads described are planned, not yet real or in effect.</div>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="../index.html" class="stamp-brand">
+      <span class="stamp-box">VigilMask</span>
+      <span class="stamp-sub">Local redaction authority · v0.9</span>
+    </a>
+    <div class="top-links">
+      <a href="../index.html#record">The record</a>
+      <a href="../index.html#pipeline">Procedure</a>
+      <a href="../index.html#dossier">Dossier</a>
+      <a href="../index.html#terms">Terms</a>
+      <a href="../download.html" class="dl">Download</a>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+  <header>
+    <div class="art-meta">
+      <span>Doc <b>006 / 006</b></span>
+      <span class="class">Field guide</span>
+      <span>Status: <b>Documented</b></span>
+      <span>Read: <b>~6 min</b></span>
+    </div>
+    <h1>What leaks when you paste into a <span class="bar">chatbot</span></h1>
+    <p class="standfirst">The paste shortcut is the most dangerous keybinding in modern office work. Nobody <i>types</i> a client database into a chat window — but pasting a document to "just summarize this" moves it to third-party infrastructure in one gesture. This field guide covers what actually gets pasted, measured; and what has already gone wrong, documented.</p>
+  </header>
+
+  <article class="prose">
+    <h2>01 / The measurements</h2>
+    <p>Security firm Cyberhaven instrumented data flows for 1.6 million knowledge workers at its client companies during ChatGPT's first breakout year. Its findings, published in 2023: <b>11% of the content employees pasted into ChatGPT was confidential</b> — source code, client data, regulated information — and the average company leaked confidential material to the chatbot hundreds of times per week.<sup><a href="#src">[01]</a></sup> Among the incidents it recorded: an executive pasting a firm's annual strategy document to get slides made, and a doctor pasting a patient's name and condition to draft an insurance letter.</p>
+    <div class="fact">
+      <div class="k">11%</div>
+      <div class="l">Of what employees pasted into ChatGPT was confidential material — measured across 1.6 million monitored workers. Cyberhaven, 2023.</div>
+    </div>
+
+    <h2>02 / Case files</h2>
+    <div class="case">
+      <div class="case-tag">2023 · Samsung semiconductor division</div>
+      <p>Within weeks of permitting ChatGPT, Samsung logged three separate incidents: an engineer pasted proprietary source code to debug it, another submitted internal meeting notes for summarization, a third uploaded chip test data. The company subsequently banned generative AI tools on corporate devices.<sup><a href="#src">[02]</a></sup> None of the three was malicious. All three were Tuesday.</p>
+    </div>
+    <div class="case">
+      <div class="case-tag">2023 · The provider side fails too</div>
+      <p>In March 2023 a caching bug caused some ChatGPT users to see titles from <b>other users' chat histories</b>; OpenAI's postmortem acknowledged that payment-related details (name, email, card last-four, expiry) of about 1.2% of Plus subscribers active in a nine-hour window may also have been visible.<sup><a href="#src">[03]</a></sup> Italy's data-protection authority temporarily blocked the service weeks later. The bug was ordinary; the lesson is structural — whatever you pasted is included in someone else's incident scope.</p>
+    </div>
+    <div class="case">
+      <div class="case-tag">2025 · Shared chats, indexed by Google</div>
+      <p>ChatGPT's share-a-conversation feature briefly offered a "discoverable" option; thousands of shared conversations — some containing deeply personal detail — surfaced in Google search results, and OpenAI withdrew the feature.<sup><a href="#src">[04]</a></sup> Data that leaves your machine acquires exposure paths its author never imagined.</p>
+    </div>
+
+    <h2>03 / Field guide: what people actually paste</h2>
+    <p>From the measured incidents above, the recurring cargo — check it against your own last month of prompts:</p>
+    <ul>
+      <li><b>Client and case material</b> — names, matters, contract terms, deal figures. In many professions this is a confidentiality breach the moment it lands on a third-party server, whatever the provider's policy says.</li>
+      <li><b>Source code and internal documents</b> — strategy memos, meeting notes, credentials embedded in config files.</li>
+      <li><b>Medical detail</b> — patient notes, your own symptoms, insurance IDs, dates of birth.</li>
+      <li><b>Identity anchors</b> — the emails, phone numbers, addresses and card numbers that make the rest of a profile joinable (see <a href="doc-005-reidentification.html">DOC 005</a>).</li>
+    </ul>
+    <p>These categories are exactly the entity classes in the <a href="../index.html">ticker on the cover page</a> — that is not a coincidence; the detection engine's target list was derived from what actually leaks.</p>
+
+    <h2>04 / Why policy is not a fix</h2>
+    <p>The instinctive corporate response — ban the tools — measurably fails: the assistants are too useful, so usage moves to personal phones and home accounts, where no policy reaches. The realistic fix accepts the pasting and <b>changes what the paste contains</b>. Strike the identifiers locally, before transmission; let the model work on placeholders; restore the real values in the reply on your own machine (the <a href="../index.html#pipeline">three-stage procedure</a>). The executive still gets slides. The doctor still gets a letter. The strategy document and the patient, however, never make the trip.</p>
+  </article>
+
+  <section class="sources" id="src">
+    <div class="sources-label"><span class="exhibit">Sources</span><span class="rule-line"></span></div>
+    <ol>
+      <li><div><a href="https://www.cyberhaven.com/blog/4-2-of-workers-have-pasted-company-data-into-chatgpt" target="_blank" rel="noopener">11% of data employees paste into ChatGPT is confidential</a><span class="src-pub">Cyberhaven, 2023</span></div></li>
+      <li><div><a href="https://www.bloomberg.com/news/articles/2023-05-02/samsung-bans-chatgpt-and-other-generative-ai-use-by-staff-after-leak" target="_blank" rel="noopener">Samsung bans staff use of generative AI after internal data leaks via ChatGPT</a><span class="src-pub">Bloomberg, May 2023; incidents first reported by The Economist Korea</span></div></li>
+      <li><div><a href="https://openai.com/index/march-20-chatgpt-outage/" target="_blank" rel="noopener">March 20 ChatGPT outage: here's what happened (Redis bug postmortem)</a><span class="src-pub">OpenAI, March 2023</span></div></li>
+      <li><div><a href="https://www.fastcompany.com/91376687/google-indexing-chatgpt-conversations" target="_blank" rel="noopener">Shared ChatGPT conversations appearing in Google search results; feature removed</a><span class="src-pub">Fast Company, 2025</span></div></li>
+    </ol>
+  </section>
+
+  <nav class="doc-nav">
+    <a class="prev" href="doc-005-reidentification.html">← Prev · Doc 005<b>How "anonymous" data gets traced back</b></a>
+    <a class="next" href="../index.html#dossier">Close file<b>Return to dossier index</b></a>
+  </nav>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="foot-links">
+      <a href="../index.html#record">The record</a>
+      <a href="../index.html#pipeline">Procedure</a>
+      <a href="../index.html#dossier">Dossier</a>
+      <a href="../index.html#terms">Terms</a>
+      <a href="../privacy.html">Privacy policy</a>
+      <a href="https://github.com/Tr1i/vigilmask" target="_blank" rel="noopener">Source</a>
+    </div>
+    <div class="foot-sig">© 2026 VigilMask · draft mockup · <b>nothing leaves this device</b></div>
+  </div>
+</footer>
+
+</body>
+</html>

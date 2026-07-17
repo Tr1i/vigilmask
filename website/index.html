@@ -99,10 +99,29 @@
 
   .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 2; }
 
+  /* ================= draft notice ================= */
+  .draft-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 60;
+    background: rgba(201,107,74,0.14);
+    border-bottom: 1px solid rgba(201,107,74,0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #e0906f;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 8px 16px;
+    line-height: 1.5;
+  }
+  .draft-banner b { font-weight: 600; }
+
   /* ================= top bar ================= */
   .topbar {
     position: fixed;
-    top: 0; left: 0; right: 0;
+    top: 33px; left: 0; right: 0;
     z-index: 50;
     border-bottom: 1px solid var(--rule);
     background: rgba(18,20,22,0.85);
@@ -166,7 +185,7 @@
 
   /* ================= hero: the intercept ================= */
   .hero {
-    padding: 150px 0 90px;
+    padding: 185px 0 90px;
     border-bottom: 1px solid var(--rule);
     position: relative;
   }
@@ -731,6 +750,9 @@
 </head>
 <body>
 
+<!-- ============ DRAFT NOTICE ============ -->
+<div class="draft-banner"><b>Draft specimen</b> — this site is a design mockup. The product, pricing, audit and downloads described are planned, not yet real or in effect.</div>
+
 <!-- ============ TOP BAR ============ -->
 <nav class="topbar">
   <div class="topbar-inner">
@@ -743,7 +765,7 @@
       <a href="#pipeline">Procedure</a>
       <a href="#dossier">Dossier</a>
       <a href="#terms">Terms</a>
-      <a href="#download" class="dl">Download</a>
+      <a href="download.html" class="dl">Download</a>
     </div>
   </div>
 </nav>
@@ -780,7 +802,7 @@
     </div>
 
     <div class="hero-ctas">
-      <a href="#download" class="cta-solid">Begin redacting</a>
+      <a href="download.html" class="cta-solid">Begin redacting</a>
       <a href="#pipeline" class="cta-line">Review procedure</a>
     </div>
   </div>
@@ -871,37 +893,37 @@
     <p class="sec-sub reveal">Sourced articles on how surveillance and data collection actually operate. No slogans — citations.</p>
 
     <div class="dossier reveal">
-      <a class="doc" href="#">
+      <a class="doc" href="dossier/doc-001-data-brokers.html">
         <div class="doc-no"><span>DOC 001</span><span class="class">Data brokers</span></div>
         <h3>What data brokers actually know about you</h3>
         <p>How a full profile gets assembled from thousands of small leaks — and why prompts are becoming one of them.</p>
         <span class="open-doc">Open document</span>
       </a>
-      <a class="doc" href="#">
+      <a class="doc" href="dossier/doc-002-prompt-lifecycle.html">
         <div class="doc-no"><span>DOC 002</span><span class="class">AI systems</span></div>
         <h3>Where your prompt goes after you press send</h3>
         <p>Processing, retention windows, and who can legally demand access — traced step by step.</p>
         <span class="open-doc">Open document</span>
       </a>
-      <a class="doc" href="#">
+      <a class="doc" href="dossier/doc-003-bulk-collection.html">
         <div class="doc-no"><span>DOC 003</span><span class="class">Surveillance</span></div>
         <h3>A short history of bulk collection</h3>
         <p>What has been documented, what changed after each revelation — and what quietly didn't.</p>
         <span class="open-doc">Open document</span>
       </a>
-      <a class="doc" href="#">
+      <a class="doc" href="dossier/doc-004-nothing-to-hide.html">
         <div class="doc-no"><span>DOC 004</span><span class="class">Argument</span></div>
         <h3>"Nothing to hide" doesn't hold up</h3>
         <p>Privacy isn't about concealing wrongdoing. It's about who decides — and what happens when the rules change.</p>
         <span class="open-doc">Open document</span>
       </a>
-      <a class="doc" href="#">
+      <a class="doc" href="dossier/doc-005-reidentification.html">
         <div class="doc-no"><span>DOC 005</span><span class="class">Methods</span></div>
         <h3>How "anonymous" data gets traced back</h3>
         <p>Re-identification, demonstrated repeatedly by researchers. Placeholders beat promises.</p>
         <span class="open-doc">Open document</span>
       </a>
-      <a class="doc" href="#">
+      <a class="doc" href="dossier/doc-006-chatbot-leaks.html">
         <div class="doc-no"><span>DOC 006</span><span class="class">Field guide</span></div>
         <h3>What leaks when you paste into a chatbot</h3>
         <p>Client names, medical details, internal documents — the sensitive material people paste daily without noticing.</p>
@@ -993,8 +1015,8 @@
     <h2>The best record is the one that was <span class="bar">never made.</span></h2>
     <p class="sec-sub">Free, open source, running in under a minute. Windows, macOS, Linux — extensions for Chrome and Firefox.</p>
     <div class="hero-ctas">
-      <a href="#" class="cta-solid">Download VigilMask</a>
-      <a href="#" class="cta-line">Inspect the source</a>
+      <a href="download.html" class="cta-solid">Download VigilMask</a>
+      <a href="https://github.com/Tr1i/vigilmask" target="_blank" rel="noopener" class="cta-line">Inspect the source</a>
     </div>
   </div>
 </section>
@@ -1007,10 +1029,10 @@
       <a href="#pipeline">Procedure</a>
       <a href="#dossier">Dossier</a>
       <a href="#terms">Terms</a>
-      <a href="#">Privacy policy</a>
-      <a href="#">Source</a>
+      <a href="privacy.html">Privacy policy</a>
+      <a href="https://github.com/Tr1i/vigilmask" target="_blank" rel="noopener">Source</a>
     </div>
-    <div class="foot-sig">© 2026 VigilMask · <b>nothing leaves this device</b></div>
+    <div class="foot-sig">© 2026 VigilMask · draft mockup · <b>nothing leaves this device</b></div>
   </div>
 </footer>
 

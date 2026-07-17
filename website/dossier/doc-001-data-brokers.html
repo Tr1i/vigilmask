@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DOC 001 — What data brokers actually know about you · VigilMask</title>
+<meta name="description" content="How a full profile gets assembled from thousands of small leaks — and why prompts are becoming one of them." />
+<link rel="stylesheet" href="../assets/css/dossier.css">
+</head>
+<body>
+
+<div class="draft-banner"><b>Draft specimen</b> — this site is a design mockup. The product, pricing, audit and downloads described are planned, not yet real or in effect.</div>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="../index.html" class="stamp-brand">
+      <span class="stamp-box">VigilMask</span>
+      <span class="stamp-sub">Local redaction authority · v0.9</span>
+    </a>
+    <div class="top-links">
+      <a href="../index.html#record">The record</a>
+      <a href="../index.html#pipeline">Procedure</a>
+      <a href="../index.html#dossier">Dossier</a>
+      <a href="../index.html#terms">Terms</a>
+      <a href="../download.html" class="dl">Download</a>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+  <header>
+    <div class="art-meta">
+      <span>Doc <b>001 / 006</b></span>
+      <span class="class">Data brokers</span>
+      <span>Status: <b>Documented</b></span>
+      <span>Read: <b>~6 min</b></span>
+    </div>
+    <h1>What data brokers actually <span class="bar">know</span> about you</h1>
+    <p class="standfirst">You have never spoken to a data broker. A data broker has never asked your permission. And yet, if you live a normal digital life, several of them hold a file on you — assembled from purchases, registrations, public records and app telemetry, then <b>sold to anyone with a budget</b>. This document reviews what has been established on the record.</p>
+  </header>
+
+  <article class="prose">
+    <h2>01 / The inventory, on the record</h2>
+    <p>The most complete official accounting of the industry remains the U.S. Federal Trade Commission's 2014 study of nine brokers, <i>Data Brokers: A Call for Transparency and Accountability</i>.<sup><a href="#src">[01]</a></sup> Its findings were not estimates — the FTC compelled the companies to describe their own holdings:</p>
+    <ul>
+      <li>One broker, Acxiom, held data on about <b>700 million consumers worldwide</b>, with over <b>3,000 data segments for nearly every U.S. consumer</b>.</li>
+      <li>Another held information on more than <b>1.4 billion consumer transactions</b> and over 700 billion data elements.</li>
+      <li>Segments offered for sale included categories such as <b>"Expectant Parent," "Diabetes Interest,"</b> and <b>"Cholesterol Focus."</b></li>
+    </ul>
+    <p>Note what those last three have in common: they are health inferences, drawn without a doctor, sold without a consent form.</p>
+
+    <div class="fact">
+      <div class="k">3,000+</div>
+      <div class="l">Data segments held on nearly every U.S. consumer by a single broker — per the FTC's own 2014 report, from the broker's own disclosures.</div>
+    </div>
+
+    <h2>02 / How cheap your inner life is</h2>
+    <p>If the FTC report feels dated, the market has only matured. In 2023, a researcher at Duke University's Sanford School of Public Policy contacted 37 data brokers asking to buy Americans' mental-health data. <b>26 responded; 11 were willing and able to sell</b> — lists covering depression, anxiety, OCD, bipolar disorder and stroke, in some cases alongside race, ethnicity and whether children live in the home. One firm quoted <b>$275 for 5,000 aggregated mental-health records</b>; others offered yearly subscription access for $75,000–$100,000.<sup><a href="#src">[02]</a></sup></p>
+    <p>There was no hacking involved. The researcher sent emails and asked. That is the point: this is a functioning retail market, not a black one.</p>
+
+    <h2>03 / "Anonymous" until it isn't</h2>
+    <div class="case">
+      <div class="case-tag">Case file · 2021</div>
+      <p>A Catholic newsletter obtained commercially available location data originating from the dating app Grindr and used it to identify a senior priest, Monsignor Jeffrey Burrill, by correlating an "anonymized" device's movements with his residence and workplaces. He resigned within days.<sup><a href="#src">[03]</a></sup> No warrant, no subpoena — a purchase.</p>
+    </div>
+    <p>The Burrill case matters because it demonstrates the whole pipeline in one incident: an app leaks a signal, a broker packages it, a buyer re-identifies a person. Every claim of "anonymized data" should be read against it — and against the re-identification research collected in <a href="doc-005-reidentification.html">DOC 005</a>.</p>
+
+    <h2>04 / Why this file exists in a dossier about prompts</h2>
+    <p>A broker's file is a mosaic. No single tile is dramatic: a magazine subscription here, a loyalty card there, a location ping, a warranty registration. The profile emerges from the <b>joins</b> — small facts about the same person, correlated across sources.</p>
+    <p>Prompts to AI systems are becoming an unusually rich tile. People type things into a chat box they would never put on a form: health worries, finances, relationship problems, their employer's internal documents. Each prompt that leaves your machine with your name, address or case details in it is a candidate tile for someone's mosaic — stored on infrastructure you don't control, governed by policies you don't set, retained for windows you don't choose (see <a href="doc-002-prompt-lifecycle.html">DOC 002</a>).</p>
+    <p>You cannot practically stop brokers from trading in your past. You can stop feeding the mosaic going forward. A prompt that leaves your machine reading <b>⟦PERSON_1⟧, ⟦ADDRESS_1⟧, ⟦HEALTH_1⟧</b> contributes nothing to anyone's file — there is no join left to make.</p>
+  </article>
+
+  <section class="sources" id="src">
+    <div class="sources-label"><span class="exhibit">Sources</span><span class="rule-line"></span></div>
+    <ol>
+      <li><div><a href="https://www.ftc.gov/reports/data-brokers-call-transparency-accountability-report-federal-trade-commission-may-2014" target="_blank" rel="noopener">Data Brokers: A Call for Transparency and Accountability</a><span class="src-pub">U.S. Federal Trade Commission, May 2014</span></div></li>
+      <li><div><a href="https://techpolicy.sanford.duke.edu/data-brokers-and-the-sale-of-americans-mental-health-data/" target="_blank" rel="noopener">Data Brokers and the Sale of Americans' Mental Health Data (Joanne Kim)</a><span class="src-pub">Duke University, Sanford School of Public Policy, February 2023</span></div></li>
+      <li><div><a href="https://www.washingtonpost.com/religion/2021/07/20/bishop-misconduct-resign-burrill/" target="_blank" rel="noopener">Top U.S. church official resigns after cellphone data used to track him on Grindr</a><span class="src-pub">The Washington Post, July 2021</span></div></li>
+    </ol>
+  </section>
+
+  <nav class="doc-nav">
+    <a class="prev" href="../index.html#dossier">← Back<b>Dossier index</b></a>
+    <a class="next" href="doc-002-prompt-lifecycle.html">Next · Doc 002<b>Where your prompt goes after you press send</b></a>
+  </nav>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="foot-links">
+      <a href="../index.html#record">The record</a>
+      <a href="../index.html#pipeline">Procedure</a>
+      <a href="../index.html#dossier">Dossier</a>
+      <a href="../index.html#terms">Terms</a>
+      <a href="../privacy.html">Privacy policy</a>
+      <a href="https://github.com/Tr1i/vigilmask" target="_blank" rel="noopener">Source</a>
+    </div>
+    <div class="foot-sig">© 2026 VigilMask · draft mockup · <b>nothing leaves this device</b></div>
+  </div>
+</footer>
+
+</body>
+</html>
